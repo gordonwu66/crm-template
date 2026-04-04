@@ -17,7 +17,7 @@ import {
 } from '../components/ui/dropdown-menu'
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, Globe, Phone, MapPin, Building2 } from 'lucide-react'
 
-const TABLE_ID = 'b84dc7db43c64a8588ec8ee6ae203b00'
+const TABLE_ID = 'e865da470d894d31a482d59c694915c7'
 
 const industryColors: Record<string, string> = {
   'Technology': 'bg-blue-100 text-blue-700',

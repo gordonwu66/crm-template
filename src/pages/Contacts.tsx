@@ -18,7 +18,7 @@ import {
 } from '../components/ui/dropdown-menu'
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, Mail, Phone } from 'lucide-react'
 
-const TABLE_ID = '4f85de729c8b4d968b853293d2c8aad0'
+const TABLE_ID = 'db2d8a7d8ffc4445a1e06ad62c0f876a'
 
 const statusColors: Record<string, string> = {
   'Lead': 'bg-blue-100 text-blue-700',
@@ -38,7 +38,7 @@ export default function Contacts() {
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState({ ...emptyForm })
-  const [editing, setEditing] = useState<string | null>(null)
+  const [editing, setEditing] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [statusFilter, setStatusFilter] = useState('All')
 
@@ -58,7 +58,7 @@ export default function Contacts() {
       company: c.company || '', status: c.status || 'Lead',
       source: c.source || '', notes: c.notes || ''
     })
-    setEditing(String(c._row_id))
+    setEditing(c.row_id)
     setDialogOpen(true)
   }
 
@@ -150,10 +150,10 @@ export default function Contacts() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(c => (
-            <div key={c._row_id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+            <div key={c.row_id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getColor(c._row_id)}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getColor(c.row_id)}`}>
                     {initials(c)}
                   </div>
                   <div>
@@ -175,7 +175,7 @@ export default function Contacts() {
                       <DropdownMenuItem onClick={() => openEdit(c)}>
                         <Pencil size={14} className="mr-2" /> Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(c._row_id)}>
+                      <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(c.row_id)}>
                         <Trash2 size={14} className="mr-2" /> Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>

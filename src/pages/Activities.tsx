@@ -17,7 +17,7 @@ import {
 } from '../components/ui/dropdown-menu'
 import { Plus, MoreHorizontal, Pencil, Trash2, Check, CalendarCheck } from 'lucide-react'
 
-const TABLE_ID = 'bddcd59b0dca43779e3898786b84f266'
+const TABLE_ID = '30b15f4b814c4169895fb8ab34e09bfb'
 
 const ACTIVITY_TYPES = ['Call', 'Email', 'Meeting', 'Task', 'Note']
 
