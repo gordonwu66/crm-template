@@ -7,10 +7,10 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-const CONTACTS_TABLE = '4f85de729c8b4d968b853293d2c8aad0'
-const COMPANIES_TABLE = 'b84dc7db43c64a8588ec8ee6ae203b00'
-const DEALS_TABLE = '6f0f0618aa2d4c418e9a64ba7b6dd301'
-const ACTIVITIES_TABLE = 'bddcd59b0dca43779e3898786b84f266'
+const CONTACTS_TABLE = 'db2d8a7d8ffc4445a1e06ad62c0f876a'
+const COMPANIES_TABLE = 'e865da470d894d31a482d59c694915c7'
+const DEALS_TABLE = '9a554477c5234eda86046528b9977300'
+const ACTIVITIES_TABLE = '30b15f4b814c4169895fb8ab34e09bfb'
 
 // ── Stat card ──────────────────────────────────────────────────────────────────
 

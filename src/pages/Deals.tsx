@@ -15,9 +15,19 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '../components/ui/dropdown-menu'
-import { Plus, MoreHorizontal, Pencil, Trash2, DollarSign, TrendingUp } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 
-const TABLE_ID = '6f0f0618aa2d4c418e9a64ba7b6dd301'
+const TABLE_ID = '9a554477c5234eda86046528b9977300'
 
 const STAGES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost']
 
@@ -35,6 +45,155 @@ const emptyForm = {
   company_name: '', close_date: '', probability: '', notes: ''
 }
 
+// ── Draggable Deal Card ─────────────────────────────────────────────────────
+function DealCard({ d, onEdit, onDelete, isDragging = false }: {
+  d: any
+  onEdit: (d: any) => void
+  onDelete: (id: string) => void
+  isDragging?: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: d.row_id })
+
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`bg-white rounded-lg border border-gray-200 p-3 shadow-sm hover:shadow-md transition-shadow group select-none cursor-grab active:cursor-grabbing ${
+        isDragging ? 'opacity-40' : ''
+      }`}
+    >
+      <div className="flex items-start justify-between gap-1 mb-2">
+        <p className="text-sm font-medium text-gray-800 leading-snug flex-1">
+          {d.title}
+        </p>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="p-0.5 rounded hover:bg-gray-100 text-gray-400 flex-shrink-0"
+              onPointerDown={e => e.stopPropagation()}
+            >
+              <MoreHorizontal size={14} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit(d)}>
+              <Pencil size={13} className="mr-2" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-red-600" onClick={() => onDelete(d.row_id)}>
+              <Trash2 size={13} className="mr-2" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {(d.contact_name || d.company_name) && (
+        <p className="text-xs text-gray-500 mb-1.5">{d.contact_name || d.company_name}</p>
+      )}
+      <div className="flex items-center justify-between">
+        {d.value ? (
+          <span className="text-sm font-semibold text-gray-700">${Number(d.value).toLocaleString()}</span>
+        ) : (
+          <span className="text-xs text-gray-400">No value</span>
+        )}
+        {d.close_date && (
+          <span className="text-xs text-gray-400">{new Date(d.close_date).toLocaleDateString()}</span>
+        )}
+      </div>
+      {d.probability && (
+        <div className="mt-2">
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-500 rounded-full"
+              style={{ width: `${Math.min(100, Number(d.probability))}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-400 mt-0.5">{d.probability}% probability</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Lightweight ghost card shown in DragOverlay (no drag hooks)
+function DealCardGhost({ d }: { d: any }) {
+  return (
+    <div className="bg-white rounded-lg border-2 border-blue-400 p-3 shadow-xl rotate-2 w-64 select-none">
+      <p className="text-sm font-medium text-gray-800 leading-snug mb-1">{d.title}</p>
+      {(d.contact_name || d.company_name) && (
+        <p className="text-xs text-gray-500">{d.contact_name || d.company_name}</p>
+      )}
+      {d.value && (
+        <p className="text-sm font-semibold text-gray-700 mt-1">${Number(d.value).toLocaleString()}</p>
+      )}
+    </div>
+  )
+}
+
+// ── Droppable Column ────────────────────────────────────────────────────────
+function DroppableColumn({
+  stage, cfg, stageDealList, stageVal, onAdd, onEdit, onDelete, activeDealId,
+}: {
+  stage: string
+  cfg: { color: string; bg: string; header: string }
+  stageDealList: any[]
+  stageVal: number
+  onAdd: (stage: string) => void
+  onEdit: (d: any) => void
+  onDelete: (id: string) => void
+  activeDealId: string | null
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: stage })
+
+  return (
+    <div className="flex-shrink-0 w-64 flex flex-col">
+      {/* Column header */}
+      <div className={`rounded-t-xl px-3 py-2.5 ${cfg.header}`}>
+        <div className="flex items-center justify-between">
+          <span className={`text-sm font-semibold ${cfg.color}`}>{stage}</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded-full bg-white/70 font-medium ${cfg.color}`}>
+            {stageDealList.length}
+          </span>
+        </div>
+        {stageVal > 0 && (
+          <p className={`text-xs mt-0.5 ${cfg.color} opacity-80`}>
+            ${stageVal.toLocaleString()}
+          </p>
+        )}
+      </div>
+
+      {/* Cards drop zone */}
+      <div
+        ref={setNodeRef}
+        className={`flex-1 rounded-b-xl p-2 min-h-32 space-y-2 transition-colors ${cfg.bg} ${
+          isOver ? 'ring-2 ring-blue-400 ring-inset brightness-95' : ''
+        }`}
+      >
+        {stageDealList.map(d => (
+          <DealCard
+            key={d.row_id}
+            d={d}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            isDragging={d.row_id === activeDealId}
+          />
+        ))}
+        <button
+          onClick={() => onAdd(stage)}
+          className={`w-full py-2 text-xs font-medium rounded-lg border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors ${cfg.bg}`}
+        >
+          + Add deal
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Page ───────────────────────────────────────────────────────────────
 export default function Deals() {
   const [deals, setDeals] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,6 +202,11 @@ export default function Deals() {
   const [editing, setEditing] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [view, setView] = useState<'kanban' | 'list'>('kanban')
+  const [activeDeal, setActiveDeal] = useState<any | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  )
 
   const load = async () => {
     const res = await table(TABLE_ID).getRows()
@@ -93,6 +257,34 @@ export default function Deals() {
     else toast.error('Could not delete deal')
   }
 
+  // ── Drag handlers ─────────────────────────────────────────────────────────
+  const handleDragStart = (event: DragStartEvent) => {
+    const deal = deals.find(d => d.row_id === event.active.id)
+    setActiveDeal(deal ?? null)
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveDeal(null)
+
+    if (!over) return                         // dropped outside any column
+    const newStage = over.id as string
+    const deal = deals.find(d => d.row_id === active.id)
+    if (!deal || deal.stage === newStage) return  // no change
+
+    // Optimistic update
+    const prevDeals = deals
+    setDeals(prev => prev.map(d => d.row_id === deal.row_id ? { ...d, stage: newStage } : d))
+
+    const res = await table(TABLE_ID).updateRow(deal.row_id, { stage: newStage } as any)
+    if (!res.success) {
+      setDeals(prevDeals)                     // rollback
+      toast.error('Could not move deal — changes reverted')
+    } else {
+      toast.success(`Moved to ${newStage}`)
+    }
+  }
+
   const stageDeals = (stage: string) => deals.filter(d => d.stage === stage)
   const stageValue = (stage: string) => stageDeals(stage).reduce((s, d) => s + (Number(d.value) || 0), 0)
   const totalPipeline = deals.filter(d => d.stage !== 'Closed Lost').reduce((s, d) => s + (Number(d.value) || 0), 0)
@@ -133,89 +325,31 @@ export default function Deals() {
           {STAGES.map(s => <Skeleton key={s} className="h-64 w-64 flex-shrink-0 rounded-xl" />)}
         </div>
       ) : view === 'kanban' ? (
-        /* Kanban Board */
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {STAGES.map(stage => {
-            const cfg = stageConfig[stage]
-            const stageDealList = stageDeals(stage)
-            return (
-              <div key={stage} className="flex-shrink-0 w-64 flex flex-col">
-                {/* Column header */}
-                <div className={`rounded-t-xl px-3 py-2.5 ${cfg.header}`}>
-                  <div className="flex items-center justify-between">
-                    <span className={`text-sm font-semibold ${cfg.color}`}>{stage}</span>
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full bg-white/70 font-medium ${cfg.color}`}>
-                      {stageDealList.length}
-                    </span>
-                  </div>
-                  {stageValue(stage) > 0 && (
-                    <p className={`text-xs mt-0.5 ${cfg.color} opacity-80`}>
-                      ${stageValue(stage).toLocaleString()}
-                    </p>
-                  )}
-                </div>
+        /* ── Kanban Board with DnD ── */
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {STAGES.map(stage => (
+              <DroppableColumn
+                key={stage}
+                stage={stage}
+                cfg={stageConfig[stage]}
+                stageDealList={stageDeals(stage)}
+                stageVal={stageValue(stage)}
+                onAdd={openAdd}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+                activeDealId={activeDeal?.row_id ?? null}
+              />
+            ))}
+          </div>
 
-                {/* Cards */}
-                <div className={`flex-1 rounded-b-xl p-2 min-h-32 space-y-2 ${cfg.bg}`}>
-                  {stageDealList.map(d => (
-                    <div key={d.row_id} className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between gap-1 mb-2">
-                        <p className="text-sm font-medium text-gray-800 leading-snug">{d.title}</p>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-0.5 rounded hover:bg-gray-100 text-gray-400 flex-shrink-0">
-                              <MoreHorizontal size={14} />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(d)}>
-                              <Pencil size={13} className="mr-2" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(d.row_id)}>
-                              <Trash2 size={13} className="mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      {(d.contact_name || d.company_name) && (
-                        <p className="text-xs text-gray-500 mb-1.5">{d.contact_name || d.company_name}</p>
-                      )}
-                      <div className="flex items-center justify-between">
-                        {d.value ? (
-                          <span className="text-sm font-semibold text-gray-700">${Number(d.value).toLocaleString()}</span>
-                        ) : (
-                          <span className="text-xs text-gray-400">No value</span>
-                        )}
-                        {d.close_date && (
-                          <span className="text-xs text-gray-400">{new Date(d.close_date).toLocaleDateString()}</span>
-                        )}
-                      </div>
-                      {d.probability && (
-                        <div className="mt-2">
-                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-500 rounded-full"
-                              style={{ width: `${Math.min(100, Number(d.probability))}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-gray-400 mt-0.5">{d.probability}% probability</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => openAdd(stage)}
-                    className={`w-full py-2 text-xs font-medium rounded-lg border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors ${cfg.bg}`}
-                  >
-                    + Add deal
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+          {/* Floating card shown while dragging */}
+          <DragOverlay dropAnimation={null}>
+            {activeDeal ? <DealCardGhost d={activeDeal} /> : null}
+          </DragOverlay>
+        </DndContext>
       ) : (
-        /* List View */
+        /* ── List View (unchanged) ── */
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>

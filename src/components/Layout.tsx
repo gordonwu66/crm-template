@@ -78,10 +78,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* Footer */}
-        <div className="px-5 py-4 border-t border-[#e5e5e5]">
-          <p className="text-[0.6875rem] text-[#a3a3a3]">© 2025 SalesPulse CRM</p>
-        </div>
       </aside>
 
       {/* Mobile overlay */}
